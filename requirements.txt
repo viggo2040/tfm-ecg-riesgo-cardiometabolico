@@ -1,0 +1,13 @@
+pandas
+numpy
+openpyxl
+xlsxwriter
+scikit-learn
+matplotlib
+seaborn
+jupyter
+notebook
+ipykernel
+shap
+xgboost
+lightgbm
