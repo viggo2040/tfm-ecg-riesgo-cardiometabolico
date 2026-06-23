@@ -20,7 +20,10 @@ El flujo está diseñado para mantener separación entre:
 - dataset ECG estructurado;
 - cohorte multimodal integrada;
 - datasets experimentales por escenario;
-- métricas, modelos e interpretabilidad.
+- métricas globales y métricas por subconjunto estructural;
+- modelos entrenados;
+- resultados de evaluación incremental;
+- resultados de interpretabilidad.
 
 ## Orden recomendado de ejecución
 
@@ -30,9 +33,9 @@ El flujo está diseñado para mantener separación entre:
 | 2 | `02_proceso_pln2_subsets_baterias.ipynb` | Cálculo de completitud y segmentación estructural en pseudo-baterías clínicas | `Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx` | `Base_Ordenada_Subsets_TFM.xlsx` |
 | 3 | `03_extraccion_ecg_pdf.ipynb` | Extracción estructurada de parámetros ECG desde reportes PDF | Carpeta de reportes ECG PDF | `ecg_dataset.xlsx` |
 | 4 | `04_integracion_ecg.ipynb` | Integración determinística de parámetros ECG con la cohorte clínica | `Base_Ordenada_Subsets_TFM.xlsx` + `crosswalk_paciente_ecg.xlsx` + `ecg_dataset.xlsx` | `Dataset_Multimodal_Integrado_TFM.xlsx` |
-| 5 | `05_construccion_endpoint.ipynb` | Construcción del endpoint experimental y generación de datasets por escenario | Dataset multimodal integrado | Datasets E1, E2, E3 y E4 + `RIESGO_CARDIOMETABOLICO` |
-| 6 | `06_modelado_predictivo.ipynb` | Entrenamiento y evaluación base de modelos supervisados por escenario | Datasets experimentales E1–E4 | Métricas por modelo y escenario |
-| 7 | `07_evaluacion_incremental_ecg.ipynb` | Comparación incremental entre escenarios clínicos, NLP, ECG y multimodal completo | Métricas consolidadas | Tablas comparativas de diferencias e impacto incremental |
+| 5 | `05_construccion_endpoint.ipynb` | Construcción del endpoint experimental y generación de datasets por escenario | `Dataset_Multimodal_Integrado_TFM.xlsx` | `Dataset_Endpoint_TFM.xlsx` + datasets E1, E2, E3 y E4 |
+| 6 | `06_modelado_predictivo.ipynb` | Entrenamiento y evaluación base de modelos supervisados por escenario | Datasets experimentales E1–E4 | `Metricas_Modelado_TFM.xlsx` + `Metricas_Modelado_Subsets_TFM.xlsx` |
+| 7 | `07_evaluacion_incremental_ecg.ipynb` | Comparación incremental global y estructural entre escenarios clínicos, NLP, ECG y multimodal completo | Métricas globales y métricas por batería | Tablas comparativas de diferencias e impacto incremental |
 | 8 | `08_interpretabilidad_shap.ipynb` | Interpretabilidad de modelos mediante SHAP | Modelos entrenados y datasets finales | Gráficos y tablas SHAP |
 
 ## Arquitectura general del pipeline
@@ -59,22 +62,35 @@ Dataset_Multimodal_Integrado_TFM.xlsx
         ↓
 05_construccion_endpoint.ipynb
         ↓
-Datasets experimentales E1, E2, E3 y E4
+Dataset_Endpoint_TFM.xlsx
+Dataset_E1_Clinico_TFM.xlsx
+Dataset_E2_Clinico_NLP_TFM.xlsx
+Dataset_E3_Clinico_ECG_TFM.xlsx
+Dataset_E4_Clinico_NLP_ECG_TFM.xlsx
         ↓
 06_modelado_predictivo.ipynb
         ↓
-Métricas por modelo y escenario
+Metricas_Modelado_TFM.xlsx
+Metricas_Modelado_Subsets_TFM.xlsx
+Predicciones_Modelos_TFM.xlsx
+Variables_Modelado_TFM.xlsx
+modelos_entrenados/
         ↓
 07_evaluacion_incremental_ecg.ipynb
         ↓
-Comparación incremental de modalidades
+Comparacion_Incremental_ECG_TFM.xlsx
+Ranking_Modelos_Escenarios_TFM.xlsx
+Resumen_Evaluacion_Incremental_TFM.txt
+figuras_evaluacion_incremental/
         ↓
 08_interpretabilidad_shap.ipynb
         ↓
-Interpretabilidad global y local mediante SHAP
+Resultados_SHAP_TFM.xlsx
+Graficos_SHAP/
+Reporte_Interpretabilidad_SHAP_TFM.txt
 ```
 
-## Identificadores y trazabilidad
+## Identificadores, trazabilidad y estructura de batería
 
 El pipeline utiliza identificadores internos para preservar trazabilidad analítica sin exponer identificadores directos de pacientes.
 
@@ -91,6 +107,30 @@ clave_matching
 `REGISTRO_ID` representa el identificador único del registro clínico o evento analítico. Permite distinguir múltiples registros asociados a un mismo paciente cuando corresponda.
 
 `clave_matching` representa una clave operacional utilizada para asociar reportes ECG PDF con registros clínicos mediante una estructura normalizada basada en nombre de paciente y fecha. Esta clave se mantiene como parte de los artefactos privados de trazabilidad y no debe publicarse en repositorios abiertos.
+
+### Trazabilidad estructural de pseudo-baterías
+
+La segmentación estructural se conserva mediante las siguientes columnas:
+
+```text
+SUBSET_EXAMENES
+SUBSET_BATERIA
+BATERIA_CLUSTER
+```
+
+`SUBSET_EXAMENES` corresponde a la denominación original del subconjunto estructural generado durante la segmentación.
+
+`SUBSET_BATERIA` corresponde al nombre estándar transversal utilizado por los notebooks posteriores para identificar la pseudo-batería clínica.
+
+`BATERIA_CLUSTER` corresponde al identificador numérico del cluster estructural.
+
+La columna estándar para análisis posteriores es:
+
+```text
+SUBSET_BATERIA
+```
+
+Esta columna debe conservarse desde el notebook 02 hasta el notebook 07. Su uso es de trazabilidad, auditoría y evaluación estructural. No debe utilizarse como predictor durante el entrenamiento de modelos.
 
 ### Archivo privado de correspondencia
 
@@ -124,7 +164,7 @@ metodo_match
 observaciones
 ```
 
-Este archivo es un artefacto privado de trazabilidad y no sera subido a GitHub si contiene nombres normalizados, fechas exactas, hashes derivados de identificadores o cualquier información potencialmente reidentificable.
+Este archivo es un artefacto privado de trazabilidad y no debe subirse a GitHub si contiene nombres normalizados, fechas exactas, hashes derivados de identificadores o cualquier información potencialmente reidentificable.
 
 ## Proceso 1: Anonimización, normalización clínica y PLN/NLP
 
@@ -205,8 +245,6 @@ ANT_ALCOHOL
 ANT_ASMA
 ```
 
-Estas variables permiten incorporar información clínica previamente no estructurada dentro de los modelos experimentales.
-
 ### Indicadores cardiometabólicos generados
 
 ```text
@@ -219,7 +257,7 @@ FLAG_OBESIDAD_IMC
 FLAG_HDL_BAJO
 ```
 
-Estos indicadores se utilizan posteriormente para la construcción del endpoint operacional:
+Estos indicadores se utilizan posteriormente para construir el endpoint operacional:
 
 ```text
 RIESGO_CARDIOMETABOLICO
@@ -243,6 +281,7 @@ Salida principal:
 
 ```text
 Base_Ordenada_Subsets_TFM.xlsx
+Reporte_Subsets_Baterias_TFM.txt
 ```
 
 ### Objetivo metodológico
@@ -258,7 +297,8 @@ Este proceso permite:
 - representar patrones de completitud;
 - identificar configuraciones estructurales de disponibilidad;
 - preparar evaluaciones de estabilidad entre subconjuntos;
-- mantener `PACIENTE_ID` y `REGISTRO_ID` durante todo el flujo.
+- mantener `PACIENTE_ID` y `REGISTRO_ID` durante todo el flujo;
+- conservar `SUBSET_EXAMENES`, `SUBSET_BATERIA` y `BATERIA_CLUSTER`.
 
 ### Cálculo de completitud
 
@@ -296,6 +336,14 @@ BATERIA_A
 BATERIA_B
 BATERIA_C
 BATERIA_D
+```
+
+Columnas estructurales esperadas:
+
+```text
+SUBSET_EXAMENES
+SUBSET_BATERIA
+BATERIA_CLUSTER
 ```
 
 ## Proceso 3: Extracción estructurada de datos ECG desde PDF
@@ -438,7 +486,9 @@ REGISTRO_ID
 variables clínicas estructuradas
 variables derivadas mediante NLP
 variables de completitud
+SUBSET_EXAMENES
 SUBSET_BATERIA
+BATERIA_CLUSTER
 ECG_HR
 ECG_PR
 ECG_QRS
@@ -452,7 +502,7 @@ SV5
 flag_ecg_disponible
 ```
 
-Las columnas con información sensible o potencialmente reidentificable se excluyen de la salida analítica destinada a modelado.
+Las columnas con información sensible o potencialmente reidentificable se excluyen de la salida analítica destinada a modelado. La columna `SUBSET_BATERIA` se conserva como trazabilidad estructural.
 
 ## Proceso 5: Construcción del endpoint experimental
 
@@ -471,10 +521,12 @@ Dataset_Multimodal_Integrado_TFM.xlsx
 Salidas principales:
 
 ```text
-Dataset_E1_Clinico.xlsx
-Dataset_E2_Clinico_NLP.xlsx
-Dataset_E3_Clinico_ECG.xlsx
-Dataset_E4_Clinico_NLP_ECG.xlsx
+Dataset_Endpoint_TFM.xlsx
+Dataset_E1_Clinico_TFM.xlsx
+Dataset_E2_Clinico_NLP_TFM.xlsx
+Dataset_E3_Clinico_ECG_TFM.xlsx
+Dataset_E4_Clinico_NLP_ECG_TFM.xlsx
+Reporte_Endpoint_TFM.txt
 ```
 
 ### Objetivo metodológico
@@ -489,16 +541,44 @@ El endpoint representa una aproximación operacional al riesgo cardiometabólico
 
 La variable no corresponde a un evento cardiovascular observado ni a una escala clínica validada externamente. Su finalidad es experimental y permite comparar escenarios predictivos bajo una definición reproducible.
 
+### Construcción del índice compuesto
+
+El índice compuesto se construye a partir de factores binarios disponibles, entre ellos:
+
+```text
+FLAG_OBESIDAD_IMC
+FLAG_PA_SISTOLICA_ALTA
+FLAG_PA_DIASTOLICA_ALTA
+FLAG_GLICEMIA_ALTA
+FLAG_LDL_ALTO
+FLAG_TRIGLICERIDOS_ALTOS
+FLAG_HDL_BAJO
+Diabetes_bin
+ANT_HTA
+ANT_DIABETES
+ANT_DISLIPIDEMIA
+ANT_OBESIDAD
+```
+
+La variable objetivo se define como:
+
+```text
+RIESGO_CARDIOMETABOLICO = 1 si INDICE_RIESGO_CARDIOMETABOLICO >= 3
+RIESGO_CARDIOMETABOLICO = 0 si INDICE_RIESGO_CARDIOMETABOLICO < 3
+```
+
+Los factores utilizados para construir el endpoint se excluyen como predictores en los datasets experimentales para evitar data leakage directo.
+
 ### Escenarios experimentales generados
 
 ```text
-E1. Clínico
-E2. Clínico + NLP
-E3. Clínico + ECG
-E4. Clínico + NLP + ECG
+E1_CLINICO
+E2_CLINICO_NLP
+E3_CLINICO_ECG
+E4_CLINICO_NLP_ECG
 ```
 
-Estos escenarios permiten evaluar de forma incremental el aporte de cada modalidad de información.
+Todos los datasets conservan `PACIENTE_ID`, `REGISTRO_ID` y `SUBSET_BATERIA` como columnas de trazabilidad, no como variables predictoras.
 
 ## Proceso 6: Modelado predictivo
 
@@ -511,15 +591,21 @@ Notebook asociado:
 Entrada principal:
 
 ```text
-Datasets experimentales E1, E2, E3 y E4
+Dataset_E1_Clinico_TFM.xlsx
+Dataset_E2_Clinico_NLP_TFM.xlsx
+Dataset_E3_Clinico_ECG_TFM.xlsx
+Dataset_E4_Clinico_NLP_ECG_TFM.xlsx
 ```
 
 Salidas principales:
 
 ```text
-Metricas_Modelado_Predictivo_TFM.xlsx
-Modelos entrenados
-Predicciones por escenario
+Metricas_Modelado_TFM.xlsx
+Metricas_Modelado_Subsets_TFM.xlsx
+Predicciones_Modelos_TFM.xlsx
+Variables_Modelado_TFM.xlsx
+Reporte_Modelado_Predictivo_TFM.txt
+modelos_entrenados/
 ```
 
 ### Objetivo metodológico
@@ -541,12 +627,30 @@ Métricas consideradas:
 Accuracy
 Precision
 Recall
-F1-Score
-ROC-AUC
+F1
+ROC_AUC
 AUPRC
 ```
 
-Todos los modelos deben entrenarse bajo condiciones homogéneas para preservar comparabilidad entre escenarios.
+Todos los modelos se entrenan bajo condiciones homogéneas para preservar comparabilidad entre escenarios.
+
+### Métricas globales y métricas por batería
+
+El notebook genera dos niveles de evaluación:
+
+```text
+Metricas_Modelado_TFM.xlsx
+```
+
+Contiene métricas globales por escenario y modelo.
+
+```text
+Metricas_Modelado_Subsets_TFM.xlsx
+```
+
+Contiene métricas por escenario, modelo y `SUBSET_BATERIA`.
+
+La columna `SUBSET_BATERIA` se usa para análisis estructural posterior y se excluye de las features predictoras.
 
 ## Proceso 7: Evaluación incremental de parámetros ECG
 
@@ -556,18 +660,24 @@ Notebook asociado:
 07_evaluacion_incremental_ecg.ipynb
 ```
 
-Entrada principal:
+Entradas principales:
 
 ```text
-Metricas_Modelado_Predictivo_TFM.xlsx
+Metricas_Modelado_TFM.xlsx
+Metricas_Modelado_Subsets_TFM.xlsx
+Variables_Modelado_TFM.xlsx
+Predicciones_Modelos_TFM.xlsx
 ```
 
 Salidas principales:
 
 ```text
 Comparacion_Incremental_ECG_TFM.xlsx
-Tablas_Incrementales_TFM.xlsx
-Reporte_Evaluacion_Incremental_TFM.txt
+Ranking_Modelos_Escenarios_TFM.xlsx
+Resumen_Evaluacion_Incremental_TFM.txt
+figuras_evaluacion_incremental/metricas_por_escenario_modelo.png
+figuras_evaluacion_incremental/delta_incremental_ecg.png
+figuras_evaluacion_incremental/ranking_auprc_por_escenario.png
 ```
 
 ### Objetivo metodológico
@@ -577,23 +687,43 @@ Este proceso consolida las métricas obtenidas y evalúa el aporte incremental d
 Comparaciones principales:
 
 ```text
-E1 Clínico → E2 Clínico + NLP
-E1 Clínico → E3 Clínico + ECG
-E2 Clínico + NLP → E4 Clínico + NLP + ECG
-E1 Clínico → E4 Clínico + NLP + ECG
+E1_CLINICO → E3_CLINICO_ECG
+E2_CLINICO_NLP → E4_CLINICO_NLP_ECG
+```
+
+Comparaciones complementarias:
+
+```text
+E1_CLINICO → E2_CLINICO_NLP
+E1_CLINICO → E4_CLINICO_NLP_ECG
+E3_CLINICO_ECG → E4_CLINICO_NLP_ECG
 ```
 
 Diferencias evaluadas:
 
 ```text
-ΔROC-AUC
-ΔAUPRC
-ΔF1
-ΔRecall
+ΔAccuracy
 ΔPrecision
+ΔRecall
+ΔF1
+ΔROC_AUC
+ΔAUPRC
 ```
 
-El objetivo central es determinar si la incorporación de parámetros ECG estructurados mejora el desempeño predictivo respecto a los escenarios sin ECG.
+### Evaluación estructural
+
+Además de la comparación global, el notebook utiliza `Metricas_Modelado_Subsets_TFM.xlsx` para evaluar estabilidad por subconjunto estructural.
+
+La evaluación estructural permite responder si el aporte incremental del ECG se mantiene en las distintas pseudo-baterías clínicas:
+
+```text
+BATERIA_A
+BATERIA_B
+BATERIA_C
+BATERIA_D
+```
+
+El objetivo central es determinar si la incorporación de parámetros ECG estructurados mejora el desempeño predictivo respecto a los escenarios sin ECG y si ese efecto es estable entre configuraciones de disponibilidad de información.
 
 ## Proceso 8: Interpretabilidad mediante SHAP
 
@@ -606,8 +736,9 @@ Notebook asociado:
 Entrada principal:
 
 ```text
-Modelos entrenados
+modelos_entrenados/
 Datasets experimentales finales
+Variables_Modelado_TFM.xlsx
 ```
 
 Salidas principales:
@@ -654,14 +785,38 @@ La evaluación experimental se organiza en cuatro escenarios:
 La comparación principal del TFM corresponde a:
 
 ```text
-E1 Clínico vs E3 Clínico + ECG
+E1_CLINICO vs E3_CLINICO_ECG
 ```
 
 La comparación complementaria para evaluar el aporte ECG dentro del escenario enriquecido es:
 
 ```text
-E2 Clínico + NLP vs E4 Clínico + NLP + ECG
+E2_CLINICO_NLP vs E4_CLINICO_NLP_ECG
 ```
+
+## Modelos y métricas
+
+Los modelos evaluados son:
+
+```text
+Logistic Regression
+Random Forest
+XGBoost
+LightGBM
+```
+
+Las métricas calculadas son:
+
+```text
+Accuracy
+Precision
+Recall
+F1
+ROC_AUC
+AUPRC
+```
+
+Los nombres de modelos y métricas se mantienen estandarizados para garantizar consistencia entre entrenamiento, evaluación incremental e interpretabilidad.
 
 ## Relación con el TFM
 
@@ -712,13 +867,18 @@ outputs/
 
 La base original, los archivos intermedios con trazabilidad privada, los datasets clínicos reales y los PDFs ECG originales no deben publicarse en repositorios públicos.
 
-No son publicados en GitHub:
+No deben publicarse en GitHub:
 
 ```text
 Base de Datos Original.xlsx
 Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx
 Base_Ordenada_Subsets_TFM.xlsx
 Dataset_Multimodal_Integrado_TFM.xlsx
+Dataset_Endpoint_TFM.xlsx
+Dataset_E1_Clinico_TFM.xlsx
+Dataset_E2_Clinico_NLP_TFM.xlsx
+Dataset_E3_Clinico_ECG_TFM.xlsx
+Dataset_E4_Clinico_NLP_ECG_TFM.xlsx
 crosswalk_paciente_ecg.xlsx
 Auditoria_Privada_Trazabilidad_TFM.xlsx
 Auditoria_Integracion_ECG_TFM.xlsx
@@ -758,10 +918,13 @@ La reproducibilidad se garantiza mediante:
 - identificadores internos `PACIENTE_ID` y `REGISTRO_ID`;
 - tabla privada de trazabilidad `crosswalk_paciente_ecg.xlsx`;
 - claves operacionales de matching para integración ECG;
+- conservación de `SUBSET_BATERIA` para análisis estructural;
+- exclusión de columnas de trazabilidad desde las features predictoras;
 - logs de transformación;
 - diccionarios de variables;
 - semillas fijas en clustering y modelado;
-- exportación de métricas consolidadas;
+- exportación de métricas globales;
+- exportación de métricas por subconjunto estructural;
 - documentación de entradas y salidas;
 - control de completitud;
 - trazabilidad de escenarios experimentales;
