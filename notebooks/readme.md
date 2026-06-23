@@ -4,86 +4,187 @@ Esta carpeta contiene los notebooks desarrollados para reproducir los procesos t
 
 **Evaluación del valor incremental de parámetros ECG en riesgo cardiometabólico**
 
-Los notebooks documentan la construcción de la cohorte experimental, el procesamiento clínico, la generación de variables mediante PLN/NLP, la segmentación estructural en pseudo-baterías clínicas, la extracción estructurada de parámetros ECG desde reportes PDF, la integración multimodal, la construcción del endpoint, el modelado predictivo y la interpretabilidad.
+El repositorio documenta una arquitectura experimental de Inteligencia Artificial clínica multimodal orientada a construir una cohorte analítica reproducible, integrar información clínica estructurada, antecedentes médicos procesados mediante PLN/NLP y parámetros electrocardiográficos extraídos desde reportes ECG en formato PDF, y evaluar su aporte dentro de modelos predictivos de riesgo cardiometabólico.
 
 ## Objetivo de la carpeta
 
 El objetivo de esta carpeta es centralizar los cuadernos ejecutables que respaldan la trazabilidad técnica del TFM.
 
-Los notebooks permiten reproducir, documentar y auditar las principales transformaciones realizadas sobre los datos, desde la base clínica original hasta los datasets preparados para modelado predictivo y evaluación incremental del aporte de los parámetros ECG.
+Los notebooks permiten reproducir, documentar y auditar las principales transformaciones realizadas sobre los datos, desde la base clínica original hasta los datasets preparados para modelado predictivo, evaluación incremental del aporte ECG e interpretabilidad mediante SHAP.
+
+El flujo está diseñado para mantener separación entre:
+
+- datos clínicos originales;
+- artefactos privados de trazabilidad;
+- bases clínicas anonimizadas;
+- dataset ECG estructurado;
+- cohorte multimodal integrada;
+- datasets experimentales por escenario;
+- métricas, modelos e interpretabilidad.
 
 ## Orden recomendado de ejecución
 
-| Orden | Notebook                                            | Propósito                                                   | Entrada principal                                    | Salida principal                                     |
-| ----: | --------------------------------------------------- | ----------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------- |
-|     1 | `01_proceso_pln1_anonimizacion_normalizacion.ipynb` | Anonimización, normalización clínica y PLN/NLP              | `Base de Datos Original.xlsx`                        | `Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx` |
-|     2 | `02_proceso_pln2_subsets_baterias.ipynb`            | Cálculo de completitud y segmentación estructural           | `Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx` | `Base_Ordenada_Subsets_TFM.xlsx`                     |
-|     3 | `03_extraccion_ecg_pdf.ipynb`                       | Extracción estructurada de parámetros ECG desde PDF         | Carpeta de reportes ECG PDF                          | `ecg_dataset.xlsx`                                   |
-|     4 | `04_integracion_ecg.ipynb`                          | Integración de parámetros ECG con la cohorte clínica        | `Base_Ordenada_Subsets_TFM.xlsx` + `ecg_dataset.xlsx`| Dataset multimodal integrado                         |
-|     5 | `05_construccion_endpoint.ipynb`                    | Construcción del endpoint experimental                      | Dataset multimodal integrado                         | `RIESGO_CARDIOMETABOLICO`                            |
-|     6 | `06_modelado_predictivo.ipynb`                      | Entrenamiento de modelos supervisados                       | Dataset final de modelado                            | Métricas por modelo y escenario                      |
-|     7 | `07_evaluacion_incremental_ecg.ipynb`               | Comparación incremental entre escenarios clínicos y ECG     | Métricas consolidadas                                | Tablas de diferencias y análisis comparativo         |
-|     8 | `08_interpretabilidad_shap.ipynb`                   | Interpretabilidad de modelos mediante SHAP                  | Modelos entrenados                                   | Gráficos y tablas SHAP                               |
+| Orden | Notebook | Propósito | Entrada principal | Salida principal |
+| ----: | -------- | --------- | ----------------- | ---------------- |
+| 1 | `01_proceso_pln1_anonimizacion_normalizacion.ipynb` | Anonimización, normalización clínica, PLN/NLP, generación de identificadores internos y trazabilidad privada | `Base de Datos Original.xlsx` | `Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx` + `crosswalk_paciente_ecg.xlsx` |
+| 2 | `02_proceso_pln2_subsets_baterias.ipynb` | Cálculo de completitud y segmentación estructural en pseudo-baterías clínicas | `Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx` | `Base_Ordenada_Subsets_TFM.xlsx` |
+| 3 | `03_extraccion_ecg_pdf.ipynb` | Extracción estructurada de parámetros ECG desde reportes PDF | Carpeta de reportes ECG PDF | `ecg_dataset.xlsx` |
+| 4 | `04_integracion_ecg.ipynb` | Integración determinística de parámetros ECG con la cohorte clínica | `Base_Ordenada_Subsets_TFM.xlsx` + `crosswalk_paciente_ecg.xlsx` + `ecg_dataset.xlsx` | `Dataset_Multimodal_Integrado_TFM.xlsx` |
+| 5 | `05_construccion_endpoint.ipynb` | Construcción del endpoint experimental y generación de datasets por escenario | Dataset multimodal integrado | Datasets E1, E2, E3 y E4 + `RIESGO_CARDIOMETABOLICO` |
+| 6 | `06_modelado_predictivo.ipynb` | Entrenamiento y evaluación base de modelos supervisados por escenario | Datasets experimentales E1–E4 | Métricas por modelo y escenario |
+| 7 | `07_evaluacion_incremental_ecg.ipynb` | Comparación incremental entre escenarios clínicos, NLP, ECG y multimodal completo | Métricas consolidadas | Tablas comparativas de diferencias e impacto incremental |
+| 8 | `08_interpretabilidad_shap.ipynb` | Interpretabilidad de modelos mediante SHAP | Modelos entrenados y datasets finales | Gráficos y tablas SHAP |
+
+## Arquitectura general del pipeline
+
+```text
+Base de Datos Original.xlsx
+        ↓
+01_proceso_pln1_anonimizacion_normalizacion.ipynb
+        ↓
+Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx
+crosswalk_paciente_ecg.xlsx
+        ↓
+02_proceso_pln2_subsets_baterias.ipynb
+        ↓
+Base_Ordenada_Subsets_TFM.xlsx
+        ↓
+03_extraccion_ecg_pdf.ipynb
+        ↓
+ecg_dataset.xlsx
+        ↓
+04_integracion_ecg.ipynb
+        ↓
+Dataset_Multimodal_Integrado_TFM.xlsx
+        ↓
+05_construccion_endpoint.ipynb
+        ↓
+Datasets experimentales E1, E2, E3 y E4
+        ↓
+06_modelado_predictivo.ipynb
+        ↓
+Métricas por modelo y escenario
+        ↓
+07_evaluacion_incremental_ecg.ipynb
+        ↓
+Comparación incremental de modalidades
+        ↓
+08_interpretabilidad_shap.ipynb
+        ↓
+Interpretabilidad global y local mediante SHAP
+```
+
+## Identificadores y trazabilidad
+
+El pipeline utiliza identificadores internos para preservar trazabilidad analítica sin exponer identificadores directos de pacientes.
+
+### Identificadores principales
+
+```text
+PACIENTE_ID
+REGISTRO_ID
+clave_matching
+```
+
+`PACIENTE_ID` representa el identificador anónimo del paciente dentro de la cohorte clínica.
+
+`REGISTRO_ID` representa el identificador único del registro clínico o evento analítico. Permite distinguir múltiples registros asociados a un mismo paciente cuando corresponda.
+
+`clave_matching` representa una clave operacional utilizada para asociar reportes ECG PDF con registros clínicos mediante una estructura normalizada basada en nombre de paciente y fecha. Esta clave se mantiene como parte de los artefactos privados de trazabilidad y no debe publicarse en repositorios abiertos.
+
+### Archivo privado de correspondencia
+
+El archivo:
+
+```text
+crosswalk_paciente_ecg.xlsx
+```
+
+permite relacionar la cohorte clínica anonimizada con el dataset ECG estructurado.
+
+Estructura mínima:
+
+```text
+PACIENTE_ID
+REGISTRO_ID
+clave_matching
+```
+
+Estructura recomendada:
+
+```text
+PACIENTE_ID
+REGISTRO_ID
+nombre_paciente_norm
+fecha_atencion_norm
+clave_matching
+clave_hash_privada
+estado_validacion
+metodo_match
+observaciones
+```
+
+Este archivo es un artefacto privado de trazabilidad y no sera subido a GitHub si contiene nombres normalizados, fechas exactas, hashes derivados de identificadores o cualquier información potencialmente reidentificable.
 
 ## Proceso 1: Anonimización, normalización clínica y PLN/NLP
 
-El primer proceso toma como entrada la base clínica original:
+Notebook asociado:
+
+```text
+01_proceso_pln1_anonimizacion_normalizacion.ipynb
+```
+
+Entrada principal:
 
 ```text
 Base de Datos Original.xlsx
 ```
 
-y reproduce el pipeline implementado en:
-
-```text
-pipeline_cohorte_tfm.py
-01_proceso_pln1_anonimizacion_normalizacion.ipynb
-```
-
-La salida principal es:
+Salidas principales:
 
 ```text
 Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx
+crosswalk_paciente_ecg.xlsx
+Auditoria_Privada_Trazabilidad_TFM.xlsx
+Diccionario_Normalizacion_Antecedentes.csv
+Log_Transformacion_Cohorte_TFM.txt
 ```
 
-### Necesidad metodológica
+### Objetivo metodológico
 
-La base clínica original contiene información sensible y variables en formatos heterogéneos. Para su utilización dentro del TFM, fue necesario construir una versión anonimizada, estructurada y analíticamente consistente.
+Este proceso transforma la base clínica original en una cohorte anonimizada, estructurada y analíticamente consistente. Además, genera los identificadores internos necesarios para mantener trazabilidad entre fuentes clínicas, antecedentes textuales y reportes ECG.
 
-Este proceso permite:
+El proceso permite:
 
-* proteger la privacidad de los pacientes mediante anonimización;
-* eliminar identificadores directos;
-* crear un identificador interno no derivado de datos personales;
-* conservar trazabilidad mediante `PACIENTE_ID`;
-* normalizar variables clínicas numéricas;
-* estructurar antecedentes médicos originalmente registrados como texto libre;
-* generar variables binarias clínicas derivadas;
-* construir indicadores cardiometabólicos reproducibles;
-* documentar el proceso mediante diccionarios, conteos y logs de transformación.
+- proteger la privacidad de los pacientes mediante anonimización;
+- eliminar identificadores directos de la base analítica;
+- generar `PACIENTE_ID` y `REGISTRO_ID`;
+- construir una tabla privada de correspondencia para integración ECG;
+- normalizar variables clínicas numéricas;
+- procesar antecedentes médicos registrados como texto libre;
+- generar variables binarias derivadas mediante reglas PLN/NLP;
+- construir indicadores clínicos cardiometabólicos;
+- documentar transformaciones mediante diccionarios, logs y artefactos de auditoría.
 
 ### Transformaciones principales
 
-El pipeline realiza las siguientes operaciones:
-
 1. Lectura de la base clínica original.
 2. Limpieza y estandarización de nombres de columnas.
-3. Eliminación de identificadores directos.
-4. Generación de `PACIENTE_ID` secuencial anónimo.
-5. Generalización temporal de fechas de atención.
-6. Normalización de variables clínicas numéricas.
-7. Codificación binaria de variables como tabaquismo y diabetes.
-8. Limpieza textual de antecedentes médicos.
-9. Detección de conceptos clínicos mediante reglas PLN/NLP.
-10. Detección básica de negaciones clínicas.
-11. Generación de variables `ANT_*`.
-12. Generación de flags cardiometabólicos `FLAG_*`.
-13. Cálculo de completitud y conteos.
-14. Exportación de archivo Excel procesado, diccionario clínico y log.
+3. Normalización de identificadores internos.
+4. Generación de `PACIENTE_ID` y `REGISTRO_ID`.
+5. Construcción de `nombre_paciente_norm`, `fecha_atencion_norm` y `clave_matching`.
+6. Generación de `crosswalk_paciente_ecg.xlsx` como artefacto privado de trazabilidad.
+7. Eliminación de identificadores directos desde la base analítica.
+8. Normalización de variables clínicas numéricas.
+9. Codificación binaria de variables clínicas como tabaquismo y diabetes.
+10. Limpieza textual de antecedentes médicos.
+11. Detección de conceptos clínicos mediante reglas PLN/NLP.
+12. Detección básica de negaciones clínicas.
+13. Generación de variables `ANT_*`.
+14. Generación de flags cardiometabólicos `FLAG_*`.
+15. Exportación de base clínica anonimizada, diccionarios y logs.
 
 ### Variables generadas mediante PLN/NLP
-
-El procesamiento de antecedentes médicos transforma texto libre en variables binarias como:
 
 ```text
 ANT_HTA
@@ -104,11 +205,9 @@ ANT_ALCOHOL
 ANT_ASMA
 ```
 
-Estas variables permiten incorporar información clínica previamente no estructurada dentro de los modelos experimentales del TFM.
+Estas variables permiten incorporar información clínica previamente no estructurada dentro de los modelos experimentales.
 
 ### Indicadores cardiometabólicos generados
-
-El pipeline también genera variables derivadas orientadas a representar factores de riesgo cardiometabólico:
 
 ```text
 FLAG_PA_SISTOLICA_ALTA
@@ -120,92 +219,67 @@ FLAG_OBESIDAD_IMC
 FLAG_HDL_BAJO
 ```
 
-Estas variables son utilizadas posteriormente para construir el endpoint operacional del estudio:
+Estos indicadores se utilizan posteriormente para la construcción del endpoint operacional:
 
 ```text
 RIESGO_CARDIOMETABOLICO
 ```
 
-### Salidas del Proceso 1
-
-```text
-Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx
-Diccionario_Normalizacion_Antecedentes.csv
-Log_Transformacion_Cohorte_TFM.txt
-```
-
 ## Proceso 2: Segmentación estructural y pseudo-baterías clínicas
 
-El segundo proceso toma como entrada la base clínica anonimizada y procesada:
-
-```text
-Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx
-```
-
-y reproduce la generación del archivo:
-
-```text
-Base_Ordenada_Subsets_TFM.xlsx
-```
-
-mediante el notebook:
+Notebook asociado:
 
 ```text
 02_proceso_pln2_subsets_baterias.ipynb
 ```
 
-### Necesidad metodológica
+Entrada principal:
 
-La cohorte procesada presenta heterogeneidad estructural. No todos los pacientes disponen del mismo conjunto de variables clínicas, antecedentes procesados o exámenes complementarios.
+```text
+Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx
+```
 
-En lugar de eliminar todos los registros incompletos, el Proceso 2 representa explícitamente la disponibilidad diferencial de información mediante subconjuntos estructurales o pseudo-baterías clínicas.
+Salida principal:
+
+```text
+Base_Ordenada_Subsets_TFM.xlsx
+```
+
+### Objetivo metodológico
+
+Este proceso caracteriza la heterogeneidad estructural de la cohorte clínica y construye subconjuntos basados en patrones de disponibilidad de información.
+
+La cohorte presenta diferencias reales en disponibilidad de variables clínicas, antecedentes procesados y exámenes complementarios. En lugar de eliminar todos los registros incompletos, el pipeline representa explícitamente la disponibilidad diferencial de información mediante pseudo-baterías clínicas.
 
 Este proceso permite:
 
-* preservar la mayor cantidad posible de registros;
-* evitar una reducción excesiva del tamaño muestral;
-* representar la heterogeneidad estructural de la cohorte;
-* identificar patrones de disponibilidad de información;
-* construir subconjuntos comparables para análisis posterior;
-* preparar la evaluación de estabilidad de modelos predictivos;
-* documentar la estructura real de los datos disponibles.
-
-### Reconstrucción técnica del proceso
-
-El proceso se basa en dos componentes:
-
-1. Cálculo de completitud por paciente.
-2. Segmentación estructural mediante clustering sobre matriz de presencia/ausencia.
+- preservar registros clínicos útiles;
+- evitar una reducción excesiva del tamaño muestral;
+- representar patrones de completitud;
+- identificar configuraciones estructurales de disponibilidad;
+- preparar evaluaciones de estabilidad entre subconjuntos;
+- mantener `PACIENTE_ID` y `REGISTRO_ID` durante todo el flujo.
 
 ### Cálculo de completitud
 
-Se calcula una variable:
+Se calcula:
 
 ```text
 TOTAL_RESULTADOS
+PORCENTAJE_COMPLETITUD
 ```
 
-correspondiente al conteo de campos clínicos disponibles por paciente dentro de un conjunto definido de variables clínicas, temporales y normalizadas.
+`TOTAL_RESULTADOS` corresponde al conteo de campos disponibles por registro dentro de un conjunto definido de variables clínicas, normalizadas y derivadas.
 
-A partir de esta variable se calcula:
-
-```text
-PORCENTAJE_COMPLETITUD = TOTAL_RESULTADOS / TOTAL_VARIABLES_EVALUADAS * 100
-```
-
-Este indicador permite cuantificar el nivel de información disponible para cada individuo.
+`PORCENTAJE_COMPLETITUD` expresa el porcentaje de disponibilidad relativa del registro respecto al total de variables evaluadas.
 
 ### Segmentación estructural
 
-Posteriormente se construye una matriz binaria de presencia/ausencia de variables clínicas normalizadas. Esta matriz no representa similitud clínica entre pacientes, sino similitud estructural en la disponibilidad de datos.
+Se construye una matriz binaria de presencia/ausencia de variables clínicas y derivadas. Esta matriz no representa similitud clínica entre pacientes; representa similitud estructural en disponibilidad de datos.
 
-Sobre esta matriz se aplica un algoritmo de clustering:
+Sobre esta matriz se aplica clustering estructural, con semilla fija para reproducibilidad.
 
-```python
-KMeans(n_clusters=4, random_state=42)
-```
-
-El resultado permite asignar cada paciente a un subconjunto estructural:
+Subconjuntos generados:
 
 ```text
 BATERIA_A
@@ -214,11 +288,7 @@ BATERIA_C
 BATERIA_D
 ```
 
-Cada batería representa una configuración distinta de disponibilidad de información.
-
-### Subconjuntos generados
-
-El archivo final contiene las siguientes hojas:
+Las hojas esperadas del archivo final son:
 
 ```text
 BASE_COMPLETA
@@ -228,25 +298,21 @@ BATERIA_C
 BATERIA_D
 ```
 
-La hoja `BASE_COMPLETA` conserva la totalidad de la cohorte procesada, incorporando las variables de completitud y pertenencia estructural.
-
-Las hojas `BATERIA_A` a `BATERIA_D` contienen subconjuntos de pacientes agrupados según patrones similares de disponibilidad de información.
-
-### Interpretación metodológica
-
-Los subconjuntos generados no deben interpretarse como grupos clínicos, diagnósticos o demográficos. Representan exclusivamente configuraciones estructurales de disponibilidad de datos.
-
-Esta distinción es relevante para el TFM, porque el objetivo no es descubrir fenotipos clínicos, sino construir una estrategia metodológica que permita evaluar modelos predictivos sobre datos clínicos heterogéneos reales.
-
 ## Proceso 3: Extracción estructurada de datos ECG desde PDF
 
-El tercer proceso toma como entrada una carpeta local de reportes ECG en formato PDF:
+Notebook asociado:
 
 ```text
-ELECTROCARDIOGRAMA/
+03_extraccion_ecg_pdf.ipynb
 ```
 
-y genera un dataset tabular estructurado:
+Entrada principal:
+
+```text
+Carpeta de reportes ECG PDF
+```
+
+Salidas principales:
 
 ```text
 ecg_dataset.xlsx
@@ -254,31 +320,21 @@ ecg_dataset.csv
 ecg_resumen.txt
 ```
 
-mediante el notebook:
+### Objetivo metodológico
 
-```text
-03_extraccion_ecg_pdf.ipynb
-```
+Este proceso extrae parámetros electrocardiográficos desde reportes ECG en formato PDF y los transforma en un dataset tabular compatible con la cohorte clínica.
 
-### Necesidad metodológica
+El proceso permite:
 
-Los reportes ECG disponibles se encuentran en formato PDF. Para incorporar esta fuente al análisis predictivo, es necesario extraer los parámetros electrocardiográficos relevantes y convertirlos en variables tabulares compatibles con la cohorte clínica procesada.
-
-Este proceso permite:
-
-* leer reportes ECG PDF de forma recursiva;
-* extraer texto embebido desde los documentos;
-* recuperar parámetros ECG estructurados;
-* normalizar valores numéricos con coma decimal;
-* generar variables electrocardiográficas tabulares;
-* construir una clave operacional de matching paciente-fecha;
-* identificar duplicados de ECG del mismo paciente en el mismo día;
-* auditar errores, completitud y parámetros faltantes;
-* generar una salida reutilizable para integración multimodal.
+- leer reportes ECG PDF de forma recursiva;
+- extraer texto embebido desde los documentos;
+- recuperar parámetros ECG estructurados;
+- normalizar valores numéricos con coma decimal;
+- construir `clave_matching` compatible con el crosswalk privado;
+- identificar duplicados del mismo paciente en el mismo día;
+- generar un dataset ECG auditable y reutilizable.
 
 ### Variables ECG extraídas
-
-El notebook extrae, cuando están disponibles, las siguientes variables:
 
 ```text
 ECG_HR
@@ -296,59 +352,35 @@ ECG_ANALYSIS
 ECG_DIAGNOSIS
 ```
 
-También se generan variables auxiliares:
+### Variables auxiliares generadas
 
 ```text
+ECG_ID
 archivo_origen
 ruta_relativa
 año
 mes
 fecha_examen
-paciente_id
+fecha
+paciente_id_pdf
 sexo
 edad
 nombre_paciente
 nombre_paciente_norm
-fecha
 clave_matching
+clave_hash_ecg
 num_ecg_mismo_paciente_fecha
 duplicado_mismo_dia
+rank_ecg_mismo_paciente_fecha
+estado_match_ecg
 pdf_valido
 parametros_extraidos
 observaciones_extraccion
 ```
 
-### Estrategia de matching
+### Parámetros core ECG
 
-El identificador `paciente_id` extraído desde el PDF no debe asumirse como identificador clínico real. La estrategia operacional de cruce se basa en:
-
-```text
-nombre_paciente_norm + fecha
-```
-
-La variable resultante es:
-
-```text
-clave_matching
-```
-
-Esta clave se utiliza posteriormente para asociar los parámetros ECG con la cohorte clínica procesada.
-
-### Control de calidad
-
-El proceso calcula:
-
-* número total de PDFs procesados;
-* número de PDFs válidos;
-* número de errores de extracción;
-* completitud por variable;
-* ECG con cinco parámetros core completos;
-* distribución por año y mes;
-* distribución de `parametros_extraidos`;
-* duplicados por paciente y fecha;
-* observaciones no vacías de extracción.
-
-Los cinco parámetros core evaluados son:
+Los parámetros principales evaluados durante control de calidad son:
 
 ```text
 ECG_HR
@@ -358,16 +390,9 @@ ECG_QTC
 ECG_AXIS
 ```
 
+El identificador extraído desde el PDF no se utiliza como identificador clínico real. La integración con la cohorte clínica se realiza posteriormente mediante `crosswalk_paciente_ecg.xlsx`.
+
 ## Proceso 4: Integración ECG con cohorte clínica
-
-El cuarto proceso toma como entrada:
-
-```text
-Base_Ordenada_Subsets_TFM.xlsx
-ecg_dataset.xlsx
-```
-
-y genera un dataset multimodal integrado.
 
 Notebook asociado:
 
@@ -375,27 +400,61 @@ Notebook asociado:
 04_integracion_ecg.ipynb
 ```
 
+Entradas principales:
+
+```text
+Base_Ordenada_Subsets_TFM.xlsx
+crosswalk_paciente_ecg.xlsx
+ecg_dataset.xlsx
+```
+
+Salidas principales:
+
+```text
+Dataset_Multimodal_Integrado_TFM.xlsx
+Auditoria_Integracion_ECG_TFM.xlsx
+Reporte_Integracion_ECG_TFM.txt
+```
+
 ### Objetivo metodológico
 
-El objetivo es vincular la información clínica estructurada con los parámetros ECG extraídos desde PDF, utilizando una clave de matching operacional basada en nombre normalizado y fecha de examen.
+Este proceso vincula la cohorte clínica segmentada con los parámetros ECG extraídos desde PDF mediante una integración determinística basada en identificadores internos y tabla privada de correspondencia.
 
-Este proceso permite construir escenarios comparables para evaluar el valor incremental de los parámetros ECG respecto de la información clínica basal.
-
-### Salida esperada
+La integración utiliza la siguiente relación:
 
 ```text
-Dataset multimodal integrado
+Base clínica: PACIENTE_ID / REGISTRO_ID
+Crosswalk: PACIENTE_ID / REGISTRO_ID + clave_matching
+Dataset ECG: clave_matching
 ```
 
-La salida de este proceso será utilizada por el notebook de construcción del endpoint experimental.
+### Resultado esperado
+
+El resultado es una cohorte multimodal integrada con:
+
+```text
+PACIENTE_ID
+REGISTRO_ID
+variables clínicas estructuradas
+variables derivadas mediante NLP
+variables de completitud
+SUBSET_BATERIA
+ECG_HR
+ECG_PR
+ECG_QRS
+ECG_QTC
+ECG_AXIS
+QT
+RV5
+SV1
+RV1
+SV5
+flag_ecg_disponible
+```
+
+Las columnas con información sensible o potencialmente reidentificable se excluyen de la salida analítica destinada a modelado.
 
 ## Proceso 5: Construcción del endpoint experimental
-
-El quinto proceso construye la variable objetivo operacional del estudio:
-
-```text
-RIESGO_CARDIOMETABOLICO
-```
 
 Notebook asociado:
 
@@ -403,15 +462,45 @@ Notebook asociado:
 05_construccion_endpoint.ipynb
 ```
 
+Entrada principal:
+
+```text
+Dataset_Multimodal_Integrado_TFM.xlsx
+```
+
+Salidas principales:
+
+```text
+Dataset_E1_Clinico.xlsx
+Dataset_E2_Clinico_NLP.xlsx
+Dataset_E3_Clinico_ECG.xlsx
+Dataset_E4_Clinico_NLP_ECG.xlsx
+```
+
 ### Objetivo metodológico
 
-El endpoint representa una aproximación operacional al riesgo cardiometabólico compuesto, construida a partir de variables clínicas disponibles y flags derivados.
+Este proceso construye la variable objetivo operacional del estudio:
 
-Este endpoint tiene finalidad académica y experimental. No corresponde a un diagnóstico clínico ni a una escala clínica validada externamente.
+```text
+RIESGO_CARDIOMETABOLICO
+```
+
+El endpoint representa una aproximación operacional al riesgo cardiometabólico compuesto, construida a partir de la acumulación de factores de riesgo disponibles en la cohorte.
+
+La variable no corresponde a un evento cardiovascular observado ni a una escala clínica validada externamente. Su finalidad es experimental y permite comparar escenarios predictivos bajo una definición reproducible.
+
+### Escenarios experimentales generados
+
+```text
+E1. Clínico
+E2. Clínico + NLP
+E3. Clínico + ECG
+E4. Clínico + NLP + ECG
+```
+
+Estos escenarios permiten evaluar de forma incremental el aporte de cada modalidad de información.
 
 ## Proceso 6: Modelado predictivo
-
-El sexto proceso entrena modelos supervisados sobre los datasets preparados.
 
 Notebook asociado:
 
@@ -419,16 +508,25 @@ Notebook asociado:
 06_modelado_predictivo.ipynb
 ```
 
-### Objetivo metodológico
-
-El objetivo es comparar el desempeño predictivo bajo distintos escenarios de entrada:
+Entrada principal:
 
 ```text
-Escenario clínico basal
-Escenario clínico + ECG
+Datasets experimentales E1, E2, E3 y E4
 ```
 
-Los modelos considerados pueden incluir, según la versión experimental final:
+Salidas principales:
+
+```text
+Metricas_Modelado_Predictivo_TFM.xlsx
+Modelos entrenados
+Predicciones por escenario
+```
+
+### Objetivo metodológico
+
+Este proceso entrena y evalúa modelos supervisados sobre los escenarios experimentales definidos.
+
+Modelos considerados:
 
 ```text
 Logistic Regression
@@ -437,9 +535,20 @@ XGBoost
 LightGBM
 ```
 
-## Proceso 7: Evaluación incremental de parámetros ECG
+Métricas consideradas:
 
-El séptimo proceso consolida las métricas obtenidas y evalúa el aporte incremental de los parámetros ECG.
+```text
+Accuracy
+Precision
+Recall
+F1-Score
+ROC-AUC
+AUPRC
+```
+
+Todos los modelos deben entrenarse bajo condiciones homogéneas para preservar comparabilidad entre escenarios.
+
+## Proceso 7: Evaluación incremental de parámetros ECG
 
 Notebook asociado:
 
@@ -447,24 +556,46 @@ Notebook asociado:
 07_evaluacion_incremental_ecg.ipynb
 ```
 
-### Objetivo metodológico
-
-El objetivo no es demostrar utilidad clínica directa, sino evaluar si la inclusión de variables extraídas desde los ECG PDF mejora el desempeño predictivo experimental respecto de un escenario clínico basal.
-
-La comparación puede considerar métricas como:
+Entrada principal:
 
 ```text
-ROC-AUC
-PR-AUC
-F1-score
-Recall
-Specificity
-Balanced Accuracy
+Metricas_Modelado_Predictivo_TFM.xlsx
 ```
 
-## Proceso 8: Interpretabilidad mediante SHAP
+Salidas principales:
 
-El octavo proceso incorpora interpretabilidad sobre los modelos entrenados.
+```text
+Comparacion_Incremental_ECG_TFM.xlsx
+Tablas_Incrementales_TFM.xlsx
+Reporte_Evaluacion_Incremental_TFM.txt
+```
+
+### Objetivo metodológico
+
+Este proceso consolida las métricas obtenidas y evalúa el aporte incremental de las modalidades NLP y ECG.
+
+Comparaciones principales:
+
+```text
+E1 Clínico → E2 Clínico + NLP
+E1 Clínico → E3 Clínico + ECG
+E2 Clínico + NLP → E4 Clínico + NLP + ECG
+E1 Clínico → E4 Clínico + NLP + ECG
+```
+
+Diferencias evaluadas:
+
+```text
+ΔROC-AUC
+ΔAUPRC
+ΔF1
+ΔRecall
+ΔPrecision
+```
+
+El objetivo central es determinar si la incorporación de parámetros ECG estructurados mejora el desempeño predictivo respecto a los escenarios sin ECG.
+
+## Proceso 8: Interpretabilidad mediante SHAP
 
 Notebook asociado:
 
@@ -472,51 +603,69 @@ Notebook asociado:
 08_interpretabilidad_shap.ipynb
 ```
 
-### Objetivo metodológico
-
-El objetivo es identificar el peso relativo de variables clínicas y ECG dentro de los modelos predictivos, aportando trazabilidad y explicabilidad al análisis experimental.
-
-## Relación entre procesos
-
-Los procesos forman una cadena reproducible de preparación, integración, modelado y evaluación:
+Entrada principal:
 
 ```text
-Base de Datos Original.xlsx
-        ↓
-Proceso 1: anonimización + normalización + PLN/NLP + flags clínicos
-        ↓
-Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx
-        ↓
-Proceso 2: completitud + clustering estructural + pseudo-baterías
-        ↓
-Base_Ordenada_Subsets_TFM.xlsx
-        ↓
-Proceso 3: extracción estructurada desde ECG PDF
-        ↓
-ecg_dataset.xlsx
-        ↓
-Proceso 4: integración ECG + cohorte clínica
-        ↓
-Dataset multimodal integrado
-        ↓
-Proceso 5: construcción del endpoint operacional
-        ↓
-RIESGO_CARDIOMETABOLICO
-        ↓
-Proceso 6: modelado predictivo
-        ↓
-Métricas por escenario
-        ↓
-Proceso 7: evaluación incremental ECG
-        ↓
-Tablas comparativas de aporte incremental
-        ↓
-Proceso 8: interpretabilidad SHAP
+Modelos entrenados
+Datasets experimentales finales
+```
+
+Salidas principales:
+
+```text
+Resultados_SHAP_TFM.xlsx
+Graficos_SHAP/
+Reporte_Interpretabilidad_SHAP_TFM.txt
+```
+
+### Objetivo metodológico
+
+Este proceso interpreta los modelos entrenados mediante SHAP, con énfasis en la contribución relativa de variables clínicas, NLP y ECG.
+
+El análisis debe permitir:
+
+- identificar variables con mayor importancia global;
+- analizar contribuciones locales de predicción;
+- determinar si las variables ECG participan entre los predictores relevantes;
+- comparar importancia relativa entre modalidades;
+- apoyar la interpretación del aporte incremental observado en las métricas.
+
+Variables ECG de interés:
+
+```text
+ECG_HR
+ECG_PR
+ECG_QRS
+ECG_QTC
+ECG_AXIS
+```
+
+## Escenarios experimentales del TFM
+
+La evaluación experimental se organiza en cuatro escenarios:
+
+| Escenario | Variables clínicas | NLP | ECG | Finalidad |
+| --------- | ------------------ | --- | --- | --------- |
+| E1. Clínico | Sí | No | No | Línea base clínica |
+| E2. Clínico + NLP | Sí | Sí | No | Evaluar aporte de antecedentes procesados |
+| E3. Clínico + ECG | Sí | No | Sí | Evaluar aporte incremental ECG |
+| E4. Clínico + NLP + ECG | Sí | Sí | Sí | Evaluar configuración multimodal completa |
+
+La comparación principal del TFM corresponde a:
+
+```text
+E1 Clínico vs E3 Clínico + ECG
+```
+
+La comparación complementaria para evaluar el aporte ECG dentro del escenario enriquecido es:
+
+```text
+E2 Clínico + NLP vs E4 Clínico + NLP + ECG
 ```
 
 ## Relación con el TFM
 
-Estos notebooks respaldan principalmente los siguientes capítulos del TFM:
+Los notebooks respaldan principalmente los siguientes capítulos:
 
 ```text
 Capítulo 4: Construcción de la cohorte experimental multimodal.
@@ -526,16 +675,53 @@ Capítulo 7: Conclusiones.
 Capítulo 8: Limitaciones y prospectiva.
 ```
 
+La arquitectura implementada mantiene coherencia con el diseño metodológico del TFM, cuyo objetivo central es evaluar el valor incremental de parámetros electrocardiográficos estructurados derivados de reportes ECG digitales dentro de modelos predictivos de riesgo cardiometabólico.
+
+## Estructura sugerida del repositorio
+
+```text
+notebooks/
+  01_proceso_pln1_anonimizacion_normalizacion.ipynb
+  02_proceso_pln2_subsets_baterias.ipynb
+  03_extraccion_ecg_pdf.ipynb
+  04_integracion_ecg.ipynb
+  05_construccion_endpoint.ipynb
+  06_modelado_predictivo.ipynb
+  07_evaluacion_incremental_ecg.ipynb
+  08_interpretabilidad_shap.ipynb
+
+src/
+  extract_ecg.py
+  utils_normalizacion.py
+  utils_trazabilidad.py
+  utils_metricas.py
+
+docs/
+  diccionario_variables.md
+  metodologia_pipeline.md
+  estructura_datasets.md
+
+outputs/
+  logs/
+  reportes_anonimizados/
+  metricas/
+  figuras/
+```
+
 ## Consideraciones de privacidad
 
-La base original, las salidas intermedias con información derivada de pacientes y los PDFs ECG originales no deben publicarse en un repositorio público.
+La base original, los archivos intermedios con trazabilidad privada, los datasets clínicos reales y los PDFs ECG originales no deben publicarse en repositorios públicos.
 
-No deben publicarse en GitHub:
+No son publicados en GitHub:
 
 ```text
 Base de Datos Original.xlsx
 Base_Datos_Original_Anonimizada_Procesada_TFM.xlsx
 Base_Ordenada_Subsets_TFM.xlsx
+Dataset_Multimodal_Integrado_TFM.xlsx
+crosswalk_paciente_ecg.xlsx
+Auditoria_Privada_Trazabilidad_TFM.xlsx
+Auditoria_Integracion_ECG_TFM.xlsx
 ecg_dataset.xlsx
 ecg_dataset.csv
 PDFs ECG originales
@@ -543,39 +729,70 @@ archivos con nombres de pacientes
 rutas relativas con identificadores
 RUT
 fechas de nacimiento
+nombres normalizados
+clave_matching
+clave_hash_privada
 información clínica reidentificable
 ```
 
-Para disponibilización pública, se recomienda incluir únicamente:
+Para disponibilización pública se incluyen únicamente:
 
 ```text
-notebooks
+notebooks sin datos reales
 scripts
-diccionarios
-logs anonimizados
+funciones utilitarias
+diccionarios anonimizados
+logs sintéticos o anonimizados
 estructura de carpetas
 archivos de ejemplo sintéticos
 documentación metodológica
+README.md
 ```
 
 ## Reproducibilidad
 
 La reproducibilidad se garantiza mediante:
 
-* notebooks ejecutables;
-* scripts Python modulares;
-* semillas fijas en clustering;
-* diccionarios de normalización;
-* logs de transformación;
-* separación entre datos originales, intermedios y derivados;
-* documentación de entradas y salidas;
-* control de completitud;
-* trazabilidad mediante claves operacionales de matching.
+- notebooks ejecutables en orden secuencial;
+- separación entre datos originales, artefactos privados y salidas analíticas;
+- identificadores internos `PACIENTE_ID` y `REGISTRO_ID`;
+- tabla privada de trazabilidad `crosswalk_paciente_ecg.xlsx`;
+- claves operacionales de matching para integración ECG;
+- logs de transformación;
+- diccionarios de variables;
+- semillas fijas en clustering y modelado;
+- exportación de métricas consolidadas;
+- documentación de entradas y salidas;
+- control de completitud;
+- trazabilidad de escenarios experimentales;
+- separación explícita entre modelado, evaluación incremental e interpretabilidad.
 
 Cada notebook debe ejecutarse siguiendo el orden definido en la tabla inicial.
+
+## Dependencias principales
+
+Las dependencias pueden variar según el entorno local, pero el pipeline utiliza principalmente:
+
+```text
+pandas
+numpy
+openpyxl
+xlsxwriter
+scikit-learn
+pypdfium2
+matplotlib
+xgboost
+lightgbm
+shap
+joblib
+```
+
+Cada notebook contiene celdas de instalación o validación de dependencias requeridas para facilitar ejecución reproducible.
 
 ## Advertencia sobre uso clínico
 
 Este repositorio tiene finalidad académica y experimental.
 
-Los notebooks, pipelines y resultados asociados no constituyen una herramienta clínica validada, no deben utilizarse para diagnóstico, tratamiento ni toma de decisiones médicas, y requieren validación externa antes de cualquier uso aplicado en contextos sanitarios reales.
+Los notebooks, pipelines, datasets derivados y resultados asociados no constituyen una herramienta clínica validada, no deben utilizarse para diagnóstico, tratamiento, estratificación clínica real ni toma de decisiones médicas.
+
+Cualquier uso aplicado en contextos sanitarios reales requeriría validación externa, revisión clínica especializada, evaluación prospectiva, análisis regulatorio y control formal de seguridad, sesgo, privacidad e interoperabilidad.
