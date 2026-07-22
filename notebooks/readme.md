@@ -4,7 +4,7 @@
 
 Esta carpeta contiene los notebooks ejecutables que respaldan el desarrollo técnico del Trabajo Fin de Máster. El repositorio documenta un pipeline experimental de Inteligencia Artificial clínica multimodal orientado a:
 
-- anonimizar y normalizar una cohorte clínica retrospectiva;
+- seudonimizar y normalizar una cohorte clínica retrospectiva;
 - procesar antecedentes médicos mediante PLN/NLP;
 - caracterizar la completitud estructural mediante pseudo-baterías;
 - extraer parámetros electrocardiográficos desde reportes ECG en PDF;
@@ -35,6 +35,8 @@ Los ocho notebooks fueron revisados en su versión actual.
 | `08_interpretabilidad_shap.ipynb` | Ejecutado | 0 | SHAP completado mediante fallback agnóstico cuando `TreeExplainer` no fue compatible |
 
 La ausencia de errores almacenados indica que las ejecuciones registradas finalizaron correctamente. Los notebooks 01–05 contienen algunas celdas sin contador de ejecución, por lo que una reproducción desde cero debe realizarse mediante **Restart Kernel and Run All** en el orden indicado en este documento.
+
+La versión actual del pipeline y del TFM utiliza una división holdout estratificada 80/20 con semilla 42. No se implementó validación cruzada. El ranking de modelos es descriptivo y se construye con las métricas del conjunto de prueba.
 
 ---
 
@@ -119,7 +121,7 @@ Graficos_SHAP/
 
 | Columna | Función | Uso como predictor |
 |---|---|---:|
-| `PACIENTE_ID` | Identificador anonimizado del paciente | No |
+| `PACIENTE_ID` | Identificador interno seudonimizado del paciente | No |
 | `REGISTRO_ID` | Identificador único del registro analítico | No |
 | `clave_matching` | Clave operacional para integración clínica–ECG | No |
 
@@ -137,7 +139,7 @@ La columna estándar para análisis posteriores es `SUBSET_BATERIA`. Las pseudo-
 
 ---
 
-## 5. Notebook 01: anonimización, normalización clínica y PLN/NLP
+## 5. Notebook 01: seudonimización, normalización clínica y PLN/NLP
 
 **Archivo:** `01_proceso_pln1_anonimizacion_normalizacion.ipynb`
 
@@ -169,7 +171,7 @@ Log_Transformacion_Cohorte_TFM.txt
 8. Procesamiento de antecedentes médicos mediante reglas PLN/NLP.
 9. Detección básica de negaciones.
 10. Generación de variables `ANT_*` e indicadores `FLAG_*`.
-11. Exportación de datos anonimizados, diccionario, auditoría y log.
+11. Exportación de la cohorte seudonimizada, diccionario, auditoría y log.
 
 ### Variables NLP generadas
 
@@ -310,6 +312,8 @@ SV5
 ECG_ANALYSIS
 ECG_DIAGNOSIS
 ```
+
+La ejecución documentada conservó simultáneamente `ECG_AXIS` y `QRS_AXIS`, aunque `QRS_AXIS` corresponde a una copia del eje representado por `ECG_AXIS`. Esta duplicación se mantiene para conservar la trazabilidad de los resultados aprobados y se declara como una limitación de la configuración experimental actual. Deberá eliminarse en futuras ejecuciones depuradas.
 
 ### Variables auxiliares relevantes
 
@@ -474,6 +478,8 @@ ANT_OBESIDAD
 | `E3_CLINICO_ECG` | Clínica + ECG | 3.779 | 33 |
 | `E4_CLINICO_NLP_ECG` | Clínica + NLP + ECG | 3.779 | 45 |
 
+Las cantidades 22, 34, 33 y 45 corresponden a la ejecución documentada e incluyen cuatro variables de control adicionales a la composición modal estricta. Esta condición se detalla en la sección del notebook 06.
+
 ---
 
 ## 10. Notebook 06: modelado predictivo
@@ -505,7 +511,12 @@ modelos_entrenados/
 ```text
 RANDOM_STATE = 42
 TEST_SIZE = 0.20
+TRAIN_SIZE = 3.023
+TEST_SIZE_REGISTROS = 756
+POSITIVOS_TEST = 88
 ```
+
+La evaluación utiliza una única división holdout estratificada 80/20 con semilla 42. Los modelos y las transformaciones de preprocesamiento se ajustan exclusivamente sobre el conjunto de entrenamiento. Las configuraciones se definen previamente y el ranking descriptivo se construye posteriormente con AUPRC, ROC-AUC y F1 obtenidos en el conjunto de prueba. No se implementa validación cruzada ni búsqueda exhaustiva de hiperparámetros. El uso del test para ordenar los modelos se reconoce como una limitación metodológica.
 
 ### Modelos
 
@@ -529,7 +540,12 @@ TN
 FP
 FN
 TP
+Brier_Score
+Calibration_Intercept
+Calibration_Slope
 ```
+
+La AUPRC se utiliza como criterio principal del ranking descriptivo, seguida por ROC-AUC y F1. El reporte textual del notebook aplica este mismo orden. Para los modelos evaluados se registran además Brier Score, intercepto y pendiente de calibración. La celda final de consulta de calibración reutiliza el artefacto generado mediante `METRICS_PATH`, sin depender de un archivo renombrado externamente.
 
 ### Mejores resultados por escenario
 
@@ -541,6 +557,19 @@ TP
 | `E4_CLINICO_NLP_ECG` | XGBoost | 0,9474 | 0,9969 | 0,9817 |
 
 El notebook genera 16 combinaciones escenario–modelo y 64 filas de métricas por pseudo-batería.
+
+### Variables de control presentes en la ejecución documentada
+
+La ejecución que respalda las métricas actuales mantuvo entre los predictores cuatro columnas de control:
+
+```text
+ESCENARIO
+flag_ecg_disponible
+N_FACTORES_ENDPOINT_OBSERVADOS
+N_FACTORES_ENDPOINT_FALTANTES
+```
+
+Estas columnas no corresponden estrictamente a las modalidades clínica, NLP o ECG. En particular, los conteos de factores observados y faltantes pueden reflejar indirectamente la completitud utilizada durante la construcción del endpoint. Los resultados publicados corresponden a esta ejecución y deben interpretarse considerando esta limitación; no representan una ejecución completamente depurada.
 
 ---
 
@@ -612,7 +641,16 @@ ROC_AUC: 0,9969
 AUPRC: 0,9817
 ```
 
-La incorporación de ECG produce una mejora marginal y dependiente del modelo. XGBoost presenta el patrón más favorable, mientras que los restantes algoritmos muestran efectos nulos, reducidos o mixtos.
+### Bootstrap pareado e incertidumbre
+
+El notebook aplica 2.000 iteraciones bootstrap pareadas sobre las predicciones del conjunto de prueba para las comparaciones principales:
+
+| Comparación | ΔAUPRC | IC 95 % ΔAUPRC | ΔROC-AUC | ΔF1 |
+|---|---:|---:|---:|---:|
+| `E1_CLINICO → E3_CLINICO_ECG` | 0,000290 | [−0,002800; 0,003405] | 0,000034 | 0,017136 |
+| `E2_CLINICO_NLP → E4_CLINICO_NLP_ECG` | 0,001710 | [−0,000723; 0,004922] | 0,000238 | 0,010952 |
+
+Ambos intervalos de AUPRC incluyen cero. La incorporación de ECG produce una mejora puntual marginal y dependiente del modelo, pero no una mejora concluyente en la métrica principal. XGBoost presenta el patrón más favorable, mientras que los restantes algoritmos muestran efectos nulos, reducidos o mixtos.
 
 ---
 
@@ -654,7 +692,11 @@ Escenarios interpretados: E4_CLINICO_NLP_ECG y E3_CLINICO_ECG
 Modelo interpretado: XGBoost
 MAX_SHAP_SAMPLE = 500
 MAX_SHAP_SAMPLE_FALLBACK = 120
+Fuente de la muestra: dataset completo
+Semilla de muestreo: 42
 ```
+
+XGBoost se interpreta en E3 y E4 por haber ocupado el primer lugar del ranking descriptivo calculado sobre el conjunto de prueba. Para cada escenario se seleccionan 500 observaciones desde el dataset completo, no exclusivamente desde el test. En consecuencia, el análisis describe el comportamiento global del modelo y no constituye una evaluación independiente de interpretabilidad sobre datos no utilizados durante el entrenamiento.
 
 ### Compatibilidad del explicador
 
@@ -673,13 +715,12 @@ El notebook no finalizó con error. Aplicó correctamente un fallback agnóstico
 | `E4_CLINICO_NLP_ECG` | 45 | 11 | 0,00 % | `SV1` | 22 |
 | `E3_CLINICO_ECG` | 33 | 11 | 0,00 % | `SV5` | 19 |
 
-En el escenario E4, la importancia agregada por modalidad fue:
+La importancia agregada por modalidad fue:
 
-| Modalidad | Contribución SHAP |
-|---|---:|
-| Clínica | 99,78 % |
-| NLP | 0,22 % |
-| ECG | 0,00 % |
+| Escenario | Clínica | NLP | ECG |
+|---|---:|---:|---:|
+| `E3_CLINICO_ECG` | 100,00 % | No aplica | 0,00 % |
+| `E4_CLINICO_NLP_ECG` | 99,78 % | 0,22 % | 0,00 % |
 
 Los valores SHAP explican el comportamiento del modelo bajo esta configuración experimental. No constituyen evidencia causal ni validación clínica.
 
@@ -709,7 +750,7 @@ Instalación recomendada:
 pip install pandas numpy openpyxl xlsxwriter scikit-learn pypdfium2 matplotlib xgboost lightgbm shap joblib
 ```
 
-Para máxima reproducibilidad se recomienda registrar versiones concretas en un archivo `requirements.txt` generado desde el entorno utilizado para la ejecución final.
+El repositorio incluye el archivo `requirements.txt` con las dependencias principales utilizadas por los notebooks. Para una reproducción exacta del entorno, se recomienda complementar este archivo con versiones concretas de cada paquete.
 
 ---
 
@@ -768,14 +809,14 @@ rutas que contengan identificadores
 información clínica potencialmente reidentificable
 ```
 
-Los datasets anonimizados, modelos y artefactos derivados solo deben publicarse después de una revisión específica de riesgo de reidentificación.
+Los datasets internos se consideran seudonimizados mientras exista el archivo privado de correspondencia. Los modelos y artefactos derivados solo deben publicarse después de una revisión específica de privacidad y riesgo de reidentificación. La denominación «anonimizado» debe reservarse para versiones públicas sin identificadores directos, claves de vinculación ni mecanismos razonables de reidentificación.
 
 ### Publicables previa revisión
 
 ```text
 notebooks sin datos reales ni rutas privadas
 README metodológico
-diccionarios anonimizados
+diccionarios sin identificadores personales
 métricas agregadas
 figuras de resultados
 reportes técnicos sin identificadores
@@ -794,10 +835,10 @@ La reproducibilidad se apoya en:
 3. identificadores internos `PACIENTE_ID` y `REGISTRO_ID`;
 4. crosswalk privado para integración ECG;
 5. conservación de `SUBSET_BATERIA` para evaluación estructural;
-6. exclusión de identificadores y variables de construcción del endpoint desde los predictores;
+6. exclusión de los identificadores, del índice y de los factores binarios utilizados directamente para construir el endpoint; las variables clínicas continuas de origen permanecen como predictores y generan una dependencia residual declarada;
 7. semilla fija `RANDOM_STATE = 42` en etapas de modelado;
-8. partición de prueba `TEST_SIZE = 0.20`;
-9. exportación de métricas globales y por pseudo-batería;
+8. división holdout estratificada 80/20 con `RANDOM_STATE = 42`, compuesta por 3.023 registros de entrenamiento y 756 de prueba;
+9. exportación de métricas globales, calibración y resultados por pseudo-batería;
 10. persistencia de modelos entrenados;
 11. reportes técnicos y figuras generadas automáticamente;
 12. análisis SHAP reproducible con fallback documentado.
@@ -807,7 +848,10 @@ La reproducibilidad se apoya en:
 - Los datos originales y artefactos privados no pueden publicarse.
 - El notebook 03 requiere parametrización de rutas locales.
 - La reproducción exacta depende de las versiones de Python y librerías.
+- El ranking descriptivo utiliza métricas del conjunto de prueba; no existe una selección independiente mediante validación cruzada.
+- La ejecución documentada del notebook 06 incluye cuatro variables de control que deben excluirse en una futura ejecución completamente depurada.
 - El fallback SHAP basado en permutaciones tiene mayor coste computacional que `TreeExplainer`.
+- SHAP se calculó sobre una muestra del dataset completo y no exclusivamente sobre el test.
 - La integración clínica–ECG depende de un crosswalk privado no publicable.
 
 ---
@@ -818,13 +862,16 @@ La reproducibilidad se apoya en:
 - Clase positiva del endpoint: **440 registros, 11,64 %**.
 - ECG extraídos desde PDF: **2.679 registros**.
 - ECG integrados en la cohorte final: **48 registros, 1,27 %**.
-- Mejor configuración global: **XGBoost en E4 Clínico + NLP + ECG**.
+- División experimental: **3.023 registros de entrenamiento y 756 de prueba**, con 88 positivos en test.
+- Mejor configuración puntual: **XGBoost en E4 Clínico + NLP + ECG**, según el ranking descriptivo del conjunto de prueba.
 - Mejor F1 global: **0,9474**.
 - Mejor ROC-AUC global: **0,9969**.
 - Mejor AUPRC global: **0,9817**.
-- Contribución SHAP agregada ECG en E4: **0,00 %**.
+- E1→E3: **ΔAUPRC = 0,000290**, IC 95 % **[−0,002800; 0,003405]**.
+- E2→E4: **ΔAUPRC = 0,001710**, IC 95 % **[−0,000723; 0,004922]**.
+- Contribución SHAP agregada ECG: **0,00 % en E3 y E4**.
 
-La evidencia respalda una señal incremental ECG marginal y dependiente del modelo, pero no una mejora robusta, generalizada ni explicativamente dominante.
+La evidencia muestra una señal incremental ECG puntual, marginal y dependiente del modelo. Los intervalos bootstrap de AUPRC incluyen cero, por lo que el aporte ECG no se considera concluyente bajo la cobertura disponible.
 
 ---
 
@@ -832,11 +879,10 @@ La evidencia respalda una señal incremental ECG marginal y dependiente del mode
 
 | Capítulo | Evidencia técnica principal |
 |---|---|
-| Capítulo 4 | Notebooks 01–04: construcción de la cohorte multimodal |
-| Capítulo 5 | Notebooks 05–08: endpoint, modelado, evaluación incremental e interpretabilidad |
+| Capítulo 4 | Notebooks 01–05: construcción de la cohorte multimodal, endpoint y escenarios experimentales |
+| Capítulo 5 | Notebooks 06–08: modelado, evaluación incremental e interpretabilidad |
 | Capítulo 6 | Notebooks 01–08, README y artefactos de reproducibilidad |
 | Capítulo 7 | Métricas, comparación incremental y resultados SHAP |
-| Capítulo 8 | Limitaciones de cobertura ECG, privacidad, interoperabilidad y reproducibilidad externa |
 
 ---
 
