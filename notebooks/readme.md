@@ -25,16 +25,16 @@ Los ocho notebooks fueron revisados en su versión actual.
 
 | Notebook | Estado de ejecución almacenado | Errores almacenados | Observación principal |
 |---|---:|---:|---|
-| `01_proceso_pln1_anonimizacion_normalizacion.ipynb` | Parcialmente ejecutado | 0 | Validaciones finales ejecutadas; cobertura de `clave_matching` de 99,84 % |
-| `02_proceso_pln2_subsets_baterias.ipynb` | Parcialmente ejecutado | 0 | Segmentación en cuatro pseudo-baterías validada |
-| `03_extraccion_ecg_pdf.ipynb` | Parcialmente ejecutado | 0 | Mantiene rutas locales absolutas que deben parametrizarse para reproducción externa |
-| `04_integracion_ecg.ipynb` | Parcialmente ejecutado | 0 | Integración determinística validada; cobertura ECG integrada de 1,27 % |
-| `05_construccion_endpoint.ipynb` | Parcialmente ejecutado | 0 | Endpoint y cuatro escenarios generados correctamente |
-| `06_modelado_predictivo.ipynb` | Ejecutado | 0 | Genera métricas globales, métricas por batería, predicciones y modelos |
-| `07_evaluacion_incremental_ecg.ipynb` | Ejecutado | 0 | Evaluación global y por `SUBSET_BATERIA` completada |
-| `08_interpretabilidad_shap.ipynb` | Ejecutado | 0 | SHAP completado mediante fallback agnóstico cuando `TreeExplainer` no fue compatible |
+| `01_proceso_pln1_anonimizacion_normalizacion.ipynb` | Ejecutado | 0 | Todas las celdas de código ejecutadas; cobertura de `clave_matching` de 99,84 % |
+| `02_proceso_pln2_subsets_baterias.ipynb` | Ejecutado | 0 | Todas las celdas de código ejecutadas; segmentación en cuatro pseudo-baterías validada |
+| `03_extraccion_ecg_pdf.ipynb` | Ejecutado | 0 | Todas las celdas de código ejecutadas; 2.679 PDF procesados y 2.678 ECG válidos |
+| `04_integracion_ecg.ipynb` | Ejecutado | 0 | Todas las celdas analíticas ejecutadas; la celda opcional de instalación de dependencias no fue necesaria |
+| `05_construccion_endpoint.ipynb` | Ejecutado | 0 | Todas las celdas de código ejecutadas; endpoint y cuatro escenarios generados |
+| `06_modelado_predictivo.ipynb` | Ejecutado | 0 | Todas las celdas analíticas ejecutadas; la celda opcional de instalación y una celda final vacía no fueron ejecutadas |
+| `07_evaluacion_incremental_ecg.ipynb` | Ejecutado | 0 | Todas las celdas de código ejecutadas; evaluación global y por `SUBSET_BATERIA` completada |
+| `08_interpretabilidad_shap.ipynb` | Ejecutado | 0 | Todas las celdas de código ejecutadas; SHAP completado mediante fallback agnóstico |
 
-La ausencia de errores almacenados indica que las ejecuciones registradas finalizaron correctamente. Los notebooks 01–05 contienen algunas celdas sin contador de ejecución, por lo que una reproducción desde cero debe realizarse mediante **Restart Kernel and Run All** en el orden indicado en este documento.
+No existen errores almacenados en ninguno de los ocho notebooks. Las únicas celdas sin contador de ejecución corresponden a una instalación opcional de dependencias en los notebooks 04 y 06, y a una celda vacía al final del notebook 06. Para reproducir el pipeline desde cero debe utilizarse **Restart Kernel and Run All** siguiendo el orden indicado en este documento.
 
 La versión actual del pipeline y del TFM utiliza una división holdout estratificada 80/20 con semilla 42. No se implementó validación cruzada. El ranking de modelos es descriptivo y se construye con las métricas del conjunto de prueba.
 
@@ -344,14 +344,26 @@ pypdfium2
 
 ### Configuración local que debe ajustarse
 
-La versión revisada contiene rutas absolutas de Windows:
+La ejecución almacenada utiliza rutas absolutas de Windows:
 
 ```python
-ROOT = Path(r"C:/Users/viggo/Project/ELECTROCARDIOGRAMA")
-OUT_DIR = Path(r"C:/Users/viggo/Project")
+ROOT = Path(r"C:/ECG/ELECTROCARDIOGRAMA")
+OUT_DIR = Path(r"C:/ECG")
 ```
 
 Para ejecutar el notebook en otro entorno, ambas rutas deben reemplazarse por rutas válidas o convertirse en parámetros relativos al repositorio.
+
+### Resultado verificado de extracción
+
+| Indicador | Valor |
+|---|---:|
+| PDF detectados y procesados | 2.679 |
+| ECG válidos | 2.678 |
+| ECG con error | 1 |
+| ECG con cinco parámetros principales completos | 2.655 |
+| Registros con `clave_matching` | 2.678 |
+| Claves de matching únicas | 2.623 |
+| Registros duplicados mismo día | 108 |
 
 ---
 
@@ -471,14 +483,24 @@ ANT_OBESIDAD
 
 ### Escenarios
 
-| Escenario | Modalidades | Registros | Features de entrenamiento |
+| Escenario | Modalidades | Registros | Variables modales exportadas |
 |---|---|---:|---:|
-| `E1_CLINICO` | Clínica | 3.779 | 22 |
-| `E2_CLINICO_NLP` | Clínica + NLP | 3.779 | 34 |
-| `E3_CLINICO_ECG` | Clínica + ECG | 3.779 | 33 |
-| `E4_CLINICO_NLP_ECG` | Clínica + NLP + ECG | 3.779 | 45 |
+| `E1_CLINICO` | Clínica | 3.779 | 18 |
+| `E2_CLINICO_NLP` | Clínica + NLP | 3.779 | 30 |
+| `E3_CLINICO_ECG` | Clínica + ECG | 3.779 | 29 |
+| `E4_CLINICO_NLP_ECG` | Clínica + NLP + ECG | 3.779 | 41 |
 
-Las cantidades 22, 34, 33 y 45 corresponden a la ejecución documentada e incluyen cuatro variables de control adicionales a la composición modal estricta. Esta condición se detalla en la sección del notebook 06.
+El notebook 05 exporta 18, 30, 29 y 41 variables modales. En el notebook 06 se incorporan adicionalmente cuatro variables de control, por lo que el entrenamiento registrado utiliza 22, 34, 33 y 45 features, respectivamente.
+
+### Cobertura ECG utilizada por el endpoint
+
+```text
+Registros totales: 3.779
+Registros con flag_ecg_disponible = 1: 47
+Cobertura: 1,24 %
+```
+
+Esta cifra se calcula mediante `flag_ecg_disponible`, definido por la presencia de al menos uno de los parámetros principales `ECG_HR`, `ECG_PR`, `ECG_QRS`, `ECG_QTC` o `ECG_AXIS`. Se distingue de los 48 registros enlazados durante la integración clínica–ECG.
 
 ---
 
@@ -720,7 +742,7 @@ La importancia agregada por modalidad fue:
 | Escenario | Clínica | NLP | ECG |
 |---|---:|---:|---:|
 | `E3_CLINICO_ECG` | 100,00 % | No aplica | 0,00 % |
-| `E4_CLINICO_NLP_ECG` | 99,78 % | 0,22 % | 0,00 % |
+| `E4_CLINICO_NLP_ECG` | 99,79 % | 0,21 % | 0,00 % |
 
 Los valores SHAP explican el comportamiento del modelo bajo esta configuración experimental. No constituyen evidencia causal ni validación clínica.
 
@@ -861,7 +883,8 @@ La reproducibilidad se apoya en:
 - Cohorte analítica final: **3.779 registros**.
 - Clase positiva del endpoint: **440 registros, 11,64 %**.
 - ECG extraídos desde PDF: **2.679 registros**.
-- ECG integrados en la cohorte final: **48 registros, 1,27 %**.
+- ECG enlazados durante la integración clínica–ECG: **48 registros, 1,27 %**.
+- Registros con al menos un parámetro ECG principal disponible para el endpoint: **47 registros, 1,24 %**.
 - División experimental: **3.023 registros de entrenamiento y 756 de prueba**, con 88 positivos en test.
 - Mejor configuración puntual: **XGBoost en E4 Clínico + NLP + ECG**, según el ranking descriptivo del conjunto de prueba.
 - Mejor F1 global: **0,9474**.
